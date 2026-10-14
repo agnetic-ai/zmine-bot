@@ -219,13 +219,37 @@ def run_all() -> None:
 def show_status() -> None:
     accounts = load_accounts()
     print(f"Total Accounts: {len(accounts)}")
+    total_balance = 0.0
     for i, a in enumerate(accounts, 1):
         u = a.get("user", {})
+        dn = u.get("displayName")
+        h = u.get("handle")
+        tor_user = a.get("torUserId", "tor_default")
+        proxy = f"socks5://{tor_user}:torpass123@{TOR_HOST}:{TOR_PORT}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        cookie = a.get("sessionCookie")
+        avail_str = "0.0000"
+        proj_day_str = "0.00"
+        try:
+            with httpx.Client(proxy=proxy, headers=headers, timeout=10.0) as client:
+                if cookie:
+                    client.cookies.set("zmine_session", cookie)
+                rw = client.get("https://zmine.si/api/v1/wallet/balances").json()
+                ro = client.get("https://zmine.si/api/v1/mining/overview").json()
+                avail = int(rw.get("MINE", {}).get("available", 0)) / 1e8
+                proj_day = int(ro.get("projectedPerDay", 0)) / 1e8
+                avail_str = f"{avail:.4f}"
+                proj_day_str = f"{proj_day:.2f}"
+                total_balance += avail
+        except Exception:
+            pass
+
         print(
-            f"[{i}] {u.get('displayName')} ({u.get('handle')}) | "
-            f"Mining: {a.get('miningStatus')} | Hashpower: {a.get('hashpower')} | "
-            f"Tasks: {a.get('tasksCompleted')} | Tor IP: {a.get('torExitIp')}"
+            f"[{i}] {dn} ({h}) | Saldo: {avail_str} MINE (Est: +{proj_day_str} MINE/hari) | "
+            f"Mining: {a.get('miningStatus')} | Hash: {a.get('hashpower')} | "
+            f"Tasks: {a.get('tasksCompleted')} | Tor: {a.get('torExitIp')}"
         )
+    print(f"\nTotal Akumulasi MINE (Semua Akun): {total_balance:.4f} MINE")
 
 
 if __name__ == "__main__":
