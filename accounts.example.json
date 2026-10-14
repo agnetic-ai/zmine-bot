@@ -1,0 +1,21 @@
+[
+  {
+    "user": {
+      "id": "00000000-0000-0000-0000-000000000000",
+      "handle": "EXAMPLE1",
+      "role": "user",
+      "displayName": "nisa_pratama"
+    },
+    "loginKey": "LK-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX",
+    "recoveryPhrase": "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20 word21 word22 word23 word24",
+    "referralCodeUsed": "4VN2PNKK",
+    "sessionCookie": "your_session_cookie_here",
+    "torUserId": "tor_acc_001",
+    "torExitIp": "185.220.101.188",
+    "createdAt": "2026-10-14T03:00:00.000Z",
+    "miningStatus": "active",
+    "sessionExpiresAt": "2026-10-15T03:00:00.000Z",
+    "hashpower": "62,220 Mh",
+    "tasksCompleted": "12/12"
+  }
+]
