@@ -231,25 +231,47 @@ def show_status() -> None:
         h = u.get("handle")
         tor_user = a.get("torUserId", "tor_default")
         proxy = f"socks5://{tor_user}:torpass123@{TOR_HOST}:{TOR_PORT}"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Origin": "https://zmine.si",
+            "Referer": "https://zmine.si/app",
+        }
         cookie = a.get("sessionCookie")
-        avail_str = "0.0000"
-        proj_day_str = "0.00"
+
+        # Fallback to last known saved balance if network/Tor times out
+        saved_bal = a.get("balance", "0.0000 MINE").replace(" MINE", "").strip()
         try:
-            with httpx.Client(proxy=proxy, headers=headers, timeout=10.0) as client:
+            avail = float(saved_bal)
+        except Exception:
+            avail = 0.0
+
+        avail_str = f"{avail:.4f}"
+        proj_day_str = a.get("projectedPerDay", "0.00 MINE").replace(" MINE", "").strip() or "0.00"
+
+        try:
+            with httpx.Client(proxy=proxy, headers=headers, timeout=20.0) as client:
                 if cookie:
                     client.cookies.set("zmine_session", cookie)
-                rw = client.get("https://zmine.si/api/v1/wallet/balances").json()
-                ro = client.get("https://zmine.si/api/v1/mining/overview").json()
-                avail = int(rw.get("MINE", {}).get("available", 0)) / 1e8
-                proj_day = int(ro.get("projectedPerDay", 0)) / 1e8
-                avail_str = f"{avail:.4f}"
-                proj_day_str = f"{proj_day:.2f}"
-                total_balance += avail
-                a["balance"] = f"{avail_str} MINE"
+                rw = client.get("https://zmine.si/api/v1/wallet/balances")
+                if rw.status_code == 401 or "authentication required" in rw.text:
+                    if check_or_refresh_session(client, a):
+                        rw = client.get("https://zmine.si/api/v1/wallet/balances")
+
+                ro = client.get("https://zmine.si/api/v1/mining/overview")
+                if rw.status_code == 200 and ro.status_code == 200:
+                    rw_j = rw.json()
+                    ro_j = ro.json()
+                    avail = int(rw_j.get("MINE", {}).get("available", 0)) / 1e8
+                    proj_day = int(ro_j.get("projectedPerDay", 0)) / 1e8
+                    avail_str = f"{avail:.4f}"
+                    proj_day_str = f"{proj_day:.2f}"
+                    a["balance"] = f"{avail_str} MINE"
+                    a["projectedPerDay"] = f"{proj_day_str} MINE"
         except Exception:
             pass
 
+        total_balance += avail
         print(
             f"[{i}] {dn} ({h}) | Saldo: {avail_str} MINE (Est: +{proj_day_str} MINE/hari) | "
             f"Mining: {a.get('miningStatus')} | Hash: {a.get('hashpower')} | "
