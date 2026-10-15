@@ -85,7 +85,7 @@ def sync_credentials_txt(accounts: list) -> None:
         lines.append(f"Session Cookie:")
         lines.append(f"  zmine_session={acc.get('sessionCookie')}")
         lines.append(
-            f"Status: Mining {acc.get('miningStatus')} | Hashpower: {acc.get('hashpower')} | Tasks: {acc.get('tasksCompleted')}"
+            f"Status: Saldo: {acc.get('balance', '0.0000 MINE')} | Mining {acc.get('miningStatus')} | Hashpower: {acc.get('hashpower')} | Tasks: {acc.get('tasksCompleted')}"
         )
         lines.append(f"Expires: {acc.get('sessionExpiresAt')}")
         lines.append("-" * 60)
@@ -192,13 +192,18 @@ def run_account_cycle(acc: dict) -> None:
             )
             time.sleep(1.2)
 
-        # 5. Final Overview Update
+        # 5. Final Overview & Balance Update
         client.headers.update({"Referer": "https://zmine.si/app"})
         rf = client.get("https://zmine.si/api/v1/mining/overview").json()
+        rw = client.get("https://zmine.si/api/v1/wallet/balances").json()
         hp = rf.get("hashpower", {}).get("totalMh", "0")
         acc["hashpower"] = f"{int(hp):,} Mh" if str(hp).isdigit() else f"{hp} Mh"
+        avail_mine = int(rw.get("MINE", {}).get("available", 0)) / 1e8
+        proj_day = int(rf.get("projectedPerDay", 0)) / 1e8
+        acc["balance"] = f"{avail_mine:.4f} MINE"
+        acc["projectedPerDay"] = f"{proj_day:.2f} MINE"
         print(
-            f"  Done: Mining={acc['miningStatus']} | Hashpower={acc['hashpower']} | Tasks={acc.get('tasksCompleted')}"
+            f"  Done: Saldo={acc['balance']} (Est: +{proj_day:.2f}/hari) | Mining={acc['miningStatus']} | Hashpower={acc['hashpower']} | Tasks={acc.get('tasksCompleted')}"
         )
     finally:
         client.close()
@@ -241,6 +246,7 @@ def show_status() -> None:
                 avail_str = f"{avail:.4f}"
                 proj_day_str = f"{proj_day:.2f}"
                 total_balance += avail
+                a["balance"] = f"{avail_str} MINE"
         except Exception:
             pass
 
@@ -249,6 +255,7 @@ def show_status() -> None:
             f"Mining: {a.get('miningStatus')} | Hash: {a.get('hashpower')} | "
             f"Tasks: {a.get('tasksCompleted')} | Tor: {a.get('torExitIp')}"
         )
+    save_accounts(accounts)
     print(f"\nTotal Akumulasi MINE (Semua Akun): {total_balance:.4f} MINE")
 
 
